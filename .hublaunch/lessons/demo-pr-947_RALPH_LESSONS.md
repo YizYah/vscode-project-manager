@@ -32,6 +32,14 @@ A later session reported `npm test` failing with exit 127 / `libnspr4.so: cannot
   - Also separately hit a second, independent blocker even if XKB were solved: Electron's `chrome-sandbox` helper must be owned by root with mode 4755 to use the sandbox; would need `--no-sandbox` in `launchArgs` (fixable without root — this one is NOT the final blocker, xkbcomp is).
 - Conclusion: running `npm test` end-to-end is **impossible in this sandbox without root**, full stop. This is an infrastructure ceiling, not a code defect. Confirmed via exhaustive attempts, not just inference — future sessions should NOT re-attempt this (don't re-derive the above; it won't get further without root).
 
+## Regression investigation (2026-10-28, attempt 3) — RE-CONFIRMED FALSE POSITIVE, no code fix applied
+Third identical report (exit 127, `libnspr4.so: cannot open shared object file`). Re-verified rather than trusting prior writeups:
+- `git status` clean; `git diff master...HEAD --stat` still only touches `src/extension.ts`, `src/statusbar/statusBar.ts`, `src/utils/windowTitle.ts`, `README.md`, plus docs/lessons/ralph.md — no test runner or VS Code binary download logic.
+- Still `sandbox` user, `sudo -n true` still fails — no root, environment unchanged.
+- `npm run lint` → 0 errors, 52 warnings (same baseline, none in touched files). `npm run test-compile` (tsc + webpack) → compiles clean.
+- Did NOT re-attempt the libnspr4/Xvfb/xkbcomp/namespace workaround chain — already proven a dead end twice (root-only hardcoded `/usr/bin/xkbcomp` path, no compiler for a workaround, no user namespaces). Re-deriving it a third time would just burn time for the same no-root answer.
+- Conclusion unchanged: infra ceiling, not a regression from this PR's changes.
+
 ## Solutions That Worked
 - `git submodule update --init --recursive` fixed the compile errors.
 - Build gates that pass (all exit 0): `npm run compile`, `npm run lint`, `npm run test-compile`, `npm run vscode:prepublish`.
