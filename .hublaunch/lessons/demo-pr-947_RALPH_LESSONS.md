@@ -48,6 +48,14 @@ Fourth identical report (exit 127, `libnspr4.so: cannot open shared object file`
 - Did NOT re-attempt the libnspr4/Xvfb/xkbcomp/namespace workaround chain — already proven a dead end three times (root-only hardcoded `/usr/bin/xkbcomp` path, no compiler for a workaround, no user namespaces).
 - Conclusion unchanged: infra ceiling, not a regression from this PR's changes. If this keeps recurring, the right fix is upstream (install libnspr4/libnss3 + full GTK/X11 stack as root in the base image), not another in-sandbox investigation.
 
+## Regression investigation (2026-10-28, attempt 5) — RE-CONFIRMED FALSE POSITIVE, no code fix applied
+Fifth identical report (exit 127, `libnspr4.so: cannot open shared object file`). Re-verified rather than trusting prior writeups:
+- `git status` clean; `git diff master...HEAD --stat` still only touches `src/extension.ts`, `src/statusbar/statusBar.ts`, `src/utils/windowTitle.ts`, `README.md`, plus docs/lessons/ralph.md — no test runner or VS Code binary download logic.
+- Still `sandbox` user, `sudo -n true` still fails — no root, environment unchanged. `ldconfig -p | grep nspr4` still empty.
+- `npm run lint` → 0 errors, 52 warnings (same baseline, none in touched files). `npm run test-compile` (tsc + webpack) → compiles clean.
+- Did NOT re-attempt the libnspr4/Xvfb/xkbcomp/namespace workaround chain — already proven a dead end four times (root-only hardcoded `/usr/bin/xkbcomp` path, no compiler for a workaround, no user namespaces).
+- Conclusion unchanged: infra ceiling, not a regression from this PR's changes. This report is now recurring on every cycle with zero new information — the fix belongs upstream (install libnspr4/libnss3 + GTK/X11 stack as root in the base image). Future sessions: do not re-run the workaround chain again; just diff-check, confirm lint/test-compile green, and note the recurrence count.
+
 ## Solutions That Worked
 - `git submodule update --init --recursive` fixed the compile errors.
 - Build gates that pass (all exit 0): `npm run compile`, `npm run lint`, `npm run test-compile`, `npm run vscode:prepublish`.
