@@ -12,6 +12,14 @@ This file persists context across agent sessions. Update it as you work.
 - Extension Host tests (`npm test`) CANNOT run in this sandbox: the downloaded VS Code binary fails with `libnspr4.so: cannot open shared object file`. No sudo/root to install libnspr4/libnss3. This is the Q2-C conditional path → ship NO new test, document manual verification in PR body.
 - Lint baseline: 0 errors, 52 pre-existing warnings (none in touched files). Expected/documented state.
 
+## Regression investigation (2026-10-28, attempt 2) — RE-CONFIRMED FALSE POSITIVE, no code fix applied
+Same report came back a second time (identical error: exit 127, `libnspr4.so: cannot open shared object file`). Re-verified from scratch rather than trusting the prior writeup blindly:
+- `git diff master...HEAD --stat` still shows only `src/extension.ts`, `src/statusbar/statusBar.ts`, `src/utils/windowTitle.ts`, `README.md`, plus docs/lessons/ralph.md — no test runner, `package.json` scripts, or VS Code binary download logic touched.
+- `whoami`/`id` confirm still running as unprivileged `sandbox` user; `sudo -n true` fails ("password is required") — no root, no change from before.
+- `ldconfig -p | grep nspr4` returns nothing — lib still absent, nothing changed in the environment either.
+- `npm run lint` → 0 errors, 52 warnings (same baseline). `npm run test-compile` (tsc + webpack) → compiles clean.
+- Conclusion unchanged: this is the same infra ceiling as attempt 1, not a regression. Did NOT re-attempt the libnspr4/Xvfb/xkbcomp/namespace workaround chain — attempt 1 already proved it dead-ends at a root-only hardcoded `/usr/bin/xkbcomp` path with no compiler available for a workaround. Re-deriving that would just burn time for the same no-root answer.
+
 ## Regression investigation (2026-10-28) — CONFIRMED FALSE POSITIVE, no code fix applied
 A later session reported `npm test` failing with exit 127 / `libnspr4.so: cannot open shared object file`, framed as a possible regression from this PR's changes. Investigation:
 - `git diff master...HEAD --stat` shows this PR only touches `src/extension.ts`, `src/statusbar/statusBar.ts`, `src/utils/windowTitle.ts`, `README.md` (+ docs/lessons). Nothing related to the test runner, `package.json` scripts, or VS Code binary download. The error is identical to the one already documented above, from *before* this PR's commits existed — proof it's a pre-existing sandbox limitation, not something this PR broke.
